@@ -17,10 +17,10 @@
             border-radius: 0.75rem;
             border: none;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem; /* Espaciado entre tarjetas */
+            margin-bottom: 1.5rem;
         }
         .card-header {
-            background-color: #667eea; /* Color de cabecera similar al formulario */
+            background-color: #667eea;
             color: white;
             border-top-left-radius: 0.75rem;
             border-top-right-radius: 0.75rem;
@@ -32,7 +32,7 @@
         .info-item strong {
             color: #34495e;
             display: inline-block;
-            width: 150px; /* Ancho fijo para alinear etiquetas */
+            width: 150px;
         }
         .badge {
             font-size: 0.9em;
@@ -145,7 +145,7 @@
         .badge-en-tramite { background-color: #ffc107; }
         .badge-pendiente-cierre { background-color: #fd7e14; }
         .badge-cerrada { background-color: #198754; }
-        .badge-anotacion { background-color: #6c757d; } /* Para anotaciones sin cambio de estado */
+        .badge-anotacion { background-color: #6c757d; }
 
         /* Responsive */
         @media (max-width: 767.98px) {
@@ -158,16 +158,16 @@
             }
             .timeline > li .timeline-badge {
                 left: 50%;
-                margin-left: -23px; /* Centrar la insignia */
+                margin-left: -23px;
             }
             .timeline > li .timeline-panel:before,
             .timeline > li .timeline-panel:after {
                 border-left: 14px solid transparent;
                 border-right: 14px solid transparent;
-                border-bottom: 14px solid #d4d4d4; /* Flecha hacia arriba */
+                border-bottom: 14px solid #d4d4d4;
                 left: 50%;
                 margin-left: -14px;
-                top: -14px; /* Posicionar arriba */
+                top: -14px;
             }
             .timeline > li .timeline-panel:after {
                 border-bottom: 13px solid #fff;
@@ -303,10 +303,9 @@
                         @foreach($report->seguimientos->sortBy('created_at') as $seguimiento)
                             @php
                                 $badgeIcon = 'fas fa-pen';
-                                $badgeClass = 'badge-anotacion'; // Default for general annotation
+                                $badgeClass = 'badge-anotacion';
 
                                 if ($seguimiento->denuncia_estado_anterior_id !== $seguimiento->denuncia_estado_nuevo_id) {
-                                    // It was a status change
                                     switch ($seguimiento->estadoNuevo->nombre) {
                                         case 'Abierta': $badgeClass = 'bg-danger'; $badgeIcon = 'fas fa-folder-open'; break;
                                         case 'En Trámite': $badgeClass = 'bg-warning'; $badgeIcon = 'fas fa-clock'; break;
@@ -347,35 +346,56 @@
         @php
             $currentUser = Auth::user();
             $estadoActualNombre = $report->estado->nombre;
-            $estadoAbiertaId = \App\Models\DenunciaEstado::where('nombre', 'Abierta')->first()->id;
-            $estadoEnTramiteId = \App\Models\DenunciaEstado::where('nombre', 'En Trámite')->first()->id;
-            $estadoPendienteCierreId = \App\Models\DenunciaEstado::where('nombre', 'Pendiente de Cierre')->first()->id;
-            $estadoCerradaId = \App\Models\DenunciaEstado::where('nombre', 'Cerrada')->first()->id;
 
             $canChangeStatus = false;
-            $canAddAnotacion = false; // Solo se puede añadir si no está cerrada
+            $canAddAnotacion = false;
             $availableStates = collect();
 
-            // Lógica para determinar qué acciones y estados están disponibles
+            // LÓGICA DE PERMISOS CORREGIDA
             if ($currentUser->role === 'super_admin') {
+                // SUPER ADMIN: Puede hacer todo sin restricciones
                 $canChangeStatus = true;
                 $canAddAnotacion = ($estadoActualNombre !== 'Cerrada');
-                $availableStates = \App\Models\DenunciaEstado::all();
-            } elseif ($currentUser->role === 'admin' || $currentUser->role === 'supervisor') {
+                $availableStates = \App\Models\DenunciaEstado::where('id', '!=', $report->denuncia_estado_id)->get();
+            } 
+            elseif ($currentUser->role === 'admin' || $currentUser->role === 'supervisor') {
+                // Verificar que el usuario tenga acceso a esta denuncia
                 if ($currentUser->colegio && $report->denunciante_colegio === $currentUser->colegio->nombre) {
-                    $canAddAnotacion = ($estadoActualNombre !== 'Cerrada'); // Puede añadir anotación si no está cerrada
+                    $canAddAnotacion = ($estadoActualNombre !== 'Cerrada');
 
                     if ($estadoActualNombre === 'Abierta') {
+                        // Ambos pueden pasar de Abierta a En Trámite
                         $canChangeStatus = true;
                         $availableStates = \App\Models\DenunciaEstado::where('nombre', 'En Trámite')->get();
-                    } elseif ($estadoActualNombre === 'En Trámite') {
-                        if ($currentUser->role === 'admin' || $currentUser->role === 'supervisor') {
+                    } 
+                    elseif ($estadoActualNombre === 'En Trámite') {
+                        if ($currentUser->role === 'admin') {
+                            // ADMIN: Puede avanzar a Pendiente de Cierre O devolver a Abierta
+                            $canChangeStatus = true;
+                            $availableStates = \App\Models\DenunciaEstado::whereIn('nombre', ['Pendiente de Cierre', 'Abierta'])->get();
+                        } elseif ($currentUser->role === 'supervisor') {
+                            // SUPERVISOR: Solo puede avanzar a Pendiente de Cierre
                             $canChangeStatus = true;
                             $availableStates = \App\Models\DenunciaEstado::where('nombre', 'Pendiente de Cierre')->get();
                         }
-                    } elseif ($estadoActualNombre === 'Pendiente de Cierre' && $currentUser->role === 'supervisor') {
-                        $canChangeStatus = true;
-                        $availableStates = \App\Models\DenunciaEstado::where('nombre', 'Cerrada')->get();
+                    } 
+                    elseif ($estadoActualNombre === 'Pendiente de Cierre') {
+                        if ($currentUser->role === 'admin') {
+                            // ADMIN: Puede cerrar la denuncia O devolverla a En Trámite
+                            $canChangeStatus = true;
+                            $availableStates = \App\Models\DenunciaEstado::whereIn('nombre', ['Cerrada', 'En Trámite'])->get();
+                        } elseif ($currentUser->role === 'supervisor') {
+                            // SUPERVISOR: NO puede cerrar denuncias (solo Admin y Super Admin)
+                            $canChangeStatus = false;
+                        }
+                    }
+                    elseif ($estadoActualNombre === 'Cerrada') {
+                        if ($currentUser->role === 'admin') {
+                            // ADMIN: Puede reabrir la denuncia
+                            $canChangeStatus = true;
+                            $availableStates = \App\Models\DenunciaEstado::whereIn('nombre', ['Pendiente de Cierre', 'En Trámite'])->get();
+                        }
+                        // SUPERVISOR: No puede hacer nada con denuncias cerradas
                     }
                 }
             }
@@ -383,40 +403,100 @@
 
         @if($canChangeStatus || $canAddAnotacion)
         <div class="card form-action-section">
-            <div class="card-header"><i class="fas fa-cogs me-2"></i> Acciones de Gestión</div>
+            <div class="card-header">
+                <i class="fas fa-cogs me-2"></i> Acciones de Gestión
+                <small class="float-end">
+                    @if($currentUser->role === 'admin')
+                        Admin: Puede avanzar, retroceder y cerrar denuncias
+                    @elseif($currentUser->role === 'supervisor') 
+                        Supervisor: Solo puede avanzar estados (no cerrar)
+                    @else
+                        Super Admin: Permisos completos
+                    @endif
+                </small>
+            </div>
             <div class="card-body">
                 <form action="{{ route('reports.updateStatus', $report) }}" method="POST">
                     @csrf
+                    
+                    @if($canChangeStatus && $availableStates->isNotEmpty())
                     <div class="mb-3">
-                        <label for="new_status_id" class="form-label">Cambiar Estado a:</label>
-                        <select name="new_status_id" id="new_status_id" class="form-select" {{ !$canChangeStatus ? 'disabled' : '' }}>
-                            <option value="">Selecciona un estado</option>
+                        <label for="new_status_id" class="form-label">
+                            <i class="fas fa-exchange-alt me-1"></i>Cambiar Estado a:
+                        </label>
+                        <select name="new_status_id" id="new_status_id" class="form-select">
+                            <option value="">Mantener estado actual ({{ $estadoActualNombre }})</option>
                             @foreach($availableStates as $estado)
-                                <option value="{{ $estado->id }}" {{ old('new_status_id') == $estado->id ? 'selected' : '' }}
-                                        @if($estado->id == $report->denuncia_estado_id) disabled @endif> {{-- No permitir seleccionar el estado actual --}}
+                                <option value="{{ $estado->id }}" {{ old('new_status_id') == $estado->id ? 'selected' : '' }}>
                                     {{ $estado->nombre }}
+                                    @if($estado->nombre === 'Cerrada')
+                                        (Finalizar denuncia)
+                                    @elseif($estado->nombre === 'Abierta')
+                                        (Reabrir denuncia)
+                                    @endif
                                 </option>
                             @endforeach
                         </select>
                         @error('new_status_id')
-                            <div class="text-danger small">{{ $message }}</div>
+                            <div class="text-danger small mt-1">{{ $message }}</div>
                         @enderror
                     </div>
+                    @endif
+
                     <div class="mb-3">
-                        <label for="anotacion_estado" class="form-label">Anotación (Obligatoria):</label>
-                        <textarea name="anotacion_estado" id="anotacion_estado" rows="3" class="form-control" required {{ !$canAddAnotacion && !$canChangeStatus ? 'disabled' : '' }}>{{ old('anotacion_estado') }}</textarea>
+                        <label for="anotacion_estado" class="form-label">
+                            <i class="fas fa-comment me-1"></i>
+                            @if($canChangeStatus)
+                                Anotación (Obligatoria si cambias el estado):
+                            @else
+                                Agregar Anotación:
+                            @endif
+                        </label>
+                        <textarea name="anotacion_estado" 
+                                  id="anotacion_estado" 
+                                  rows="4" 
+                                  class="form-control" 
+                                  placeholder="Describe las acciones tomadas, observaciones o el motivo del cambio de estado..."
+                                  {{ !$canAddAnotacion ? 'disabled' : '' }}>{{ old('anotacion_estado') }}</textarea>
                         @error('anotacion_estado')
-                            <div class="text-danger small">{{ $message }}</div>
+                            <div class="text-danger small mt-1">{{ $message }}</div>
                         @enderror
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            Mínimo 10 caracteres. Esta información quedará registrada en el historial.
+                        </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" {{ !$canAddAnotacion && !$canChangeStatus ? 'disabled' : '' }}>
-                        <i class="fas fa-save me-2"></i> Guardar Cambios y Añadir Anotación
-                    </button>
-                    <small class="text-muted d-block mt-2">
-                        Si no seleccionas un nuevo estado, solo se guardará la anotación.
-                    </small>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" 
+                                class="btn btn-primary" 
+                                {{ !$canAddAnotacion && !$canChangeStatus ? 'disabled' : '' }}>
+                            <i class="fas fa-save me-2"></i>
+                            @if($canChangeStatus)
+                                Guardar Cambios
+                            @else
+                                Agregar Anotación
+                            @endif
+                        </button>
+                    </div>
                 </form>
+            </div>
+        </div>
+        @else
+        <div class="card">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-ban fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Sin acciones disponibles</h5>
+                <p class="text-muted">
+                    @if($estadoActualNombre === 'Cerrada')
+                        Esta denuncia está cerrada. 
+                        @if($currentUser->role === 'supervisor')
+                            Solo los Administradores pueden reabrir denuncias cerradas.
+                        @endif
+                    @else
+                        No tienes permisos para gestionar esta denuncia o no hay acciones disponibles para el estado actual.
+                    @endif
+                </p>
             </div>
         </div>
         @endif
@@ -430,49 +510,55 @@
             const anotacionTextArea = document.getElementById('anotacion_estado');
             const submitButton = document.querySelector('.form-action-section .btn-primary');
 
-            // Función para actualizar el estado del botón y campo de anotación
-            function updateActionFormState() {
-                const isStatusSelected = newStatusSelect.value !== '';
-                const isAnotacionFilled = anotacionTextArea.value.trim().length > 0;
+            if (newStatusSelect && anotacionTextArea && submitButton) {
+                function updateFormValidation() {
+                    const isStatusSelected = newStatusSelect.value !== '';
+                    const anotacionText = anotacionTextArea.value.trim();
+                    const isAnotacionValid = anotacionText.length >= 10;
 
-                // Habilitar el botón si se selecciona un estado O si se escribe una anotación
-                if (isStatusSelected || isAnotacionFilled) {
-                    submitButton.removeAttribute('disabled');
-                    anotacionTextArea.setAttribute('required', 'required'); // La anotación es obligatoria si hay acción
-                } else {
-                    // Solo deshabilitar si no se puede cambiar estado Y la anotación está vacía
-                    const canChangeStatusInitial = {{ json_encode($canChangeStatus) }};
-                    const canAddAnotacionInitial = {{ json_encode($canAddAnotacion) }};
-
-                    if (!canChangeStatusInitial && !canAddAnotacionInitial) {
-                         submitButton.setAttribute('disabled', 'disabled');
-                         anotacionTextArea.removeAttribute('required');
+                    // Si se selecciona un estado, la anotación es obligatoria
+                    if (isStatusSelected) {
+                        anotacionTextArea.setAttribute('required', 'required');
+                        submitButton.disabled = !isAnotacionValid;
                     } else {
-                         submitButton.setAttribute('disabled', 'disabled');
-                         anotacionTextArea.removeAttribute('required'); // Al menos 10 chars, pero no requerido solo por existir
+                        // Si no se cambia estado, la anotación no es obligatoria pero debe tener al menos 10 caracteres si se escribe
+                        anotacionTextArea.removeAttribute('required');
+                        submitButton.disabled = (anotacionText.length > 0 && anotacionText.length < 10);
                     }
                 }
+
+                newStatusSelect.addEventListener('change', updateFormValidation);
+                anotacionTextArea.addEventListener('input', updateFormValidation);
+
+                // Validación en el envío del formulario
+                document.querySelector('.form-action-section form').addEventListener('submit', function(e) {
+                    const selectedStatus = newStatusSelect.value;
+                    const anotacionText = anotacionTextArea.value.trim();
+
+                    if (selectedStatus !== '' && anotacionText.length < 10) {
+                        e.preventDefault();
+                        alert('Debe escribir una anotación de al menos 10 caracteres al cambiar el estado.');
+                        anotacionTextArea.focus();
+                        return false;
+                    }
+
+                    if (selectedStatus === '' && anotacionText.length > 0 && anotacionText.length < 10) {
+                        e.preventDefault();
+                        alert('La anotación debe tener al menos 10 caracteres.');
+                        anotacionTextArea.focus();
+                        return false;
+                    }
+
+                    if (selectedStatus === '' && anotacionText.length === 0) {
+                        e.preventDefault();
+                        alert('Debe cambiar el estado o agregar una anotación.');
+                        return false;
+                    }
+                });
+
+                // Ejecutar validación inicial
+                updateFormValidation();
             }
-
-            // Escuchar cambios en el select de estado y en el textarea de anotación
-            newStatusSelect.addEventListener('change', updateActionFormState);
-            anotacionTextArea.addEventListener('input', updateActionFormState);
-
-            // Llamar al cargar para establecer el estado inicial
-            updateActionFormState();
-
-
-            // Lógica para validar que si se selecciona un estado, la anotación no esté vacía (validación de front-end)
-            document.querySelector('.form-action-section form').addEventListener('submit', function(e) {
-                const selectedStatus = newStatusSelect.value;
-                const anotacionText = anotacionTextArea.value.trim();
-
-                if ((selectedStatus !== '' || anotacionText !== '') && anotacionText.length < 10) {
-                    e.preventDefault();
-                    alert('La anotación debe tener al menos 10 caracteres.');
-                    anotacionTextArea.focus();
-                }
-            });
         });
     </script>
 </body>
