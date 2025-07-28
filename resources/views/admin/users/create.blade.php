@@ -1,80 +1,217 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Crear Usuario') }}
-        </h2>
-    </x-slot>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Usuario - Panel Administrativo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f2f5;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .card {
+            border-radius: 0.75rem;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ route('dashboard') }}">
+                <i class="fas fa-shield-alt me-2"></i>Panel Administrativo
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3 text-white">
+                    <i class="fas fa-user"></i> Bienvenido, {{ Auth::user()->name }}
+                    ({{ str_replace('_', ' ', Auth::user()->role) }})
+                </span>
+                <form action="{{ route('logout') }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-semibold mb-4">Formulario de Creación de Usuario</h3>
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1><i class="fas fa-plus me-2"></i>Nuevo Usuario</h1>
+                        <p class="text-muted">Agregar un nuevo usuario al sistema</p>
+                    </div>
+                    <div>
+                        <a href="{{ route('users.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver a la Lista
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    <form method="POST" action="{{ route('users.store') }}">
-                        @csrf
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-user me-2"></i>Información del Usuario</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('users.store') }}" method="POST">
+                            @csrf
+                            
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Nombre Completo <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control @error('name') is-invalid @enderror" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ old('name') }}" 
+                                       placeholder="Ingresa el nombre completo"
+                                       required>
+                                @error('name')
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
 
-                        <div class="mb-4">
-                            <x-input-label for="name" :value="__('Nombre')" />
-                            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
-                            <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                        </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>Correo Electrónico <span class="text-danger">*</span>
+                                </label>
+                                <input type="email" 
+                                       class="form-control @error('email') is-invalid @enderror" 
+                                       id="email" 
+                                       name="email" 
+                                       value="{{ old('email') }}" 
+                                       placeholder="usuario@ejemplo.com"
+                                       required>
+                                @error('email')
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
 
-                        <div class="mb-4">
-                            <x-input-label for="email" :value="__('Email')" />
-                            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
-                            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-                        </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">
+                                        <i class="fas fa-lock me-1"></i>Contraseña <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control @error('password') is-invalid @enderror" 
+                                           id="password" 
+                                           name="password" 
+                                           required>
+                                    @error('password')
+                                        <div class="invalid-feedback">
+                                            <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="password_confirmation" class="form-label">
+                                        <i class="fas fa-lock me-1"></i>Confirmar Contraseña <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password_confirmation" 
+                                           name="password_confirmation" 
+                                           required>
+                                </div>
+                            </div>
 
-                        <div class="mb-4">
-                            <x-input-label for="password" :value="__('Contraseña')" />
-                            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-                            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-                        </div>
+                            <div class="mb-3">
+                                <label for="role" class="form-label">
+                                    <i class="fas fa-user-tag me-1"></i>Rol <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-control @error('role') is-invalid @enderror" 
+                                        id="role" 
+                                        name="role" 
+                                        required>
+                                    <option value="">Seleccione un rol</option>
+                                    <option value="super_admin" {{ old('role') == 'super_admin' ? 'selected' : '' }}>
+                                        <i class="fas fa-crown"></i> Super Administrador
+                                    </option>
+                                    <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>
+                                        <i class="fas fa-user-tie"></i> Administrador
+                                    </option>
+                                    <option value="supervisor" {{ old('role') == 'supervisor' ? 'selected' : '' }}>
+                                        <i class="fas fa-user-check"></i> Supervisor
+                                    </option>
+                                </select>
+                                @error('role')
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                    </div>
+                                @enderror
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> El rol determina los permisos del usuario en el sistema
+                                </div>
+                            </div>
 
-                        <div class="mb-4">
-                            <x-input-label for="password_confirmation" :value="__('Confirmar Contraseña')" />
-                            <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
-                            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-                        </div>
+                            <div class="mb-3" id="colegio_assignment_div" style="{{ old('role') == 'admin' || old('role') == 'supervisor' ? 'display:block;' : 'display:none;' }}">
+                                <label for="colegio_id" class="form-label">
+                                    <i class="fas fa-school me-1"></i>Colegio Asignado
+                                </label>
+                                <select class="form-control @error('colegio_id') is-invalid @enderror" 
+                                        id="colegio_id" 
+                                        name="colegio_id">
+                                    <option value="">Selecciona un colegio</option>
+                                    @foreach($colegios as $colegio)
+                                        <option value="{{ $colegio->id }}" {{ old('colegio_id') == $colegio->id ? 'selected' : '' }}>
+                                            {{ $colegio->nombre }} 
+                                            @if($colegio->municipio)
+                                                ({{ $colegio->municipio->nombre }})
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('colegio_id')
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                    </div>
+                                @enderror
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> Los roles 'Administrador' y 'Supervisor' deben tener un colegio asignado
+                                </div>
+                            </div>
 
-                        <div class="mb-4">
-                            <x-input-label for="role" :value="__('Rol')" />
-                            <select id="role" name="role" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                <option value="">Seleccione un rol</option>
-                                <option value="super_admin" {{ old('role') == 'super_admin' ? 'selected' : '' }}>Super Administrador</option>
-                                <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Administrador</option>
-                                <option value="supervisor" {{ old('role') == 'supervisor' ? 'selected' : '' }}>Supervisor</option>
-                            </select>
-                            <x-input-error :messages="$errors->get('role')" class="mt-2" />
-                        </div>
+                            @if($colegios->isEmpty())
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    <strong>¡Atención!</strong> No hay colegios disponibles. 
+                                    <a href="{{ route('colegios.create') }}" class="alert-link">Crear colegio primero</a>.
+                                </div>
+                            @endif
 
-                        <div class="mb-4" id="colegio_assignment_div" style="{{ old('role') == 'admin' || old('role') == 'supervisor' ? 'display:block;' : 'display:none;' }}">
-                            <x-input-label for="colegio_id" :value="__('Asignar Colegio')" />
-                            <select id="colegio_id" name="colegio_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                <option value="">No asignar</option>
-                                @foreach($colegios as $colegio)
-                                    <option value="{{ $colegio->id }}" {{ old('colegio_id') == $colegio->id ? 'selected' : '' }}>{{ $colegio->nombre }} ({{ $colegio->municipio->nombre ?? 'N/A' }})</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('colegio_id')" class="mt-2" />
-                            <p class="text-sm text-gray-500 mt-1">Los roles 'Administrador' y 'Supervisor' deben tener un colegio asignado.</p>
-                        </div>
-
-                        <div class="flex items-center justify-end mt-4">
-                            <a href="{{ route('users.index') }}" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-4">
-                                {{ __('Cancelar') }}
-                            </a>
-                            <x-primary-button>
-                                {{ __('Registrar Usuario') }}
-                            </x-primary-button>
-                        </div>
-                    </form>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="{{ route('users.index') }}" class="btn btn-secondary me-md-2">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Crear Usuario
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const roleSelect = document.getElementById('role');
@@ -84,18 +221,17 @@
             function toggleColegioAssignment() {
                 if (roleSelect.value === 'admin' || roleSelect.value === 'supervisor') {
                     colegioAssignmentDiv.style.display = 'block';
-                    colegioSelect.setAttribute('required', 'required'); // Hacer el select de colegio obligatorio
+                    colegioSelect.setAttribute('required', 'required');
                 } else {
                     colegioAssignmentDiv.style.display = 'none';
-                    colegioSelect.removeAttribute('required'); // No obligatorio
-                    colegioSelect.value = ''; // Limpiar selección
+                    colegioSelect.removeAttribute('required');
+                    colegioSelect.value = '';
                 }
             }
 
             roleSelect.addEventListener('change', toggleColegioAssignment);
-
-            // Ejecutar al cargar la página para reflejar old() values
-            toggleColegioAssignment();
+            toggleColegioAssignment(); // Ejecutar al cargar la página
         });
     </script>
-</x-app-layout>
+</body>
+</html>
