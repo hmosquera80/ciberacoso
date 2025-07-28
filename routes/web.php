@@ -32,7 +32,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard principal (Ver Denuncias)
     Route::get('/dashboard', [ReportController::class, 'index'])->name('dashboard');
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/denuncias/{report}', [ReportController::class, 'show'])->name('reports.show');
     Route::post('/denuncias/{report}/update-status', [ReportController::class, 'updateStatus'])->name('reports.updateStatus');
     Route::post('/denuncias/{report}/add-seguimiento', [ReportController::class, 'addSeguimiento'])->name('reports.addSeguimiento');
