@@ -65,6 +65,53 @@
         .required {
             color: #dc3545;
         }
+        .form-control.is-valid {
+            border-color: #28a745;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.7-.7 1.4-1.4.7-.7L5.6 3.3 4.2 1.9a.5.5 0 0 0-.7 0L1.6 3.8a.5.5 0 0 0 0 .7l.7.73z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 3.6 4.4 4.8m0-4.8-4.4 4.8'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+        .form-control:disabled {
+            background-color: #f8f9fa;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .validation-message {
+            font-size: 0.875em;
+            margin-top: 0.25rem;
+        }
+        .validation-message.valid {
+            color: #28a745;
+        }
+        .validation-message.invalid {
+            color: #dc3545;
+        }
+        .municipio-info {
+            background: linear-gradient(45deg, #28a74520, #20c99720);
+            border: 1px solid #28a74550;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .loading-colegios {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 8px;
+            text-align: center;
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -126,21 +173,27 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <div id="municipio-validation-message" class="validation-message"></div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Nombre del colegio <span class="required">*</span></label>
-                            <select class="form-control" name="denunciante_colegio_id" id="denunciante_colegio_id" required>
-                                <option value="">Selecciona un colegio</option>
-                                @foreach($colegios as $colegio)
-                                    <option value="{{ $colegio->id }}" 
-                                            data-municipio-id="{{ $colegio->municipio_id }}"
-                                            {{ old('denunciante_colegio_id') == $colegio->id ? 'selected' : '' }}>
-                                        {{ $colegio->nombre }}
-                                    </option>
-                                @endforeach
+                            <select class="form-control" name="denunciante_colegio_id" id="denunciante_colegio_id" required disabled>
+                                <option value="">Primero selecciona un municipio</option>
                             </select>
+                            <div id="loading-colegios" class="loading-colegios" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando colegios...
+                            </div>
+                            <div id="colegio-validation-message" class="validation-message"></div>
+                            <div id="municipio-info" class="municipio-info" style="display: none;">
+                                <i class="fas fa-info-circle"></i> <strong>Colegios disponibles:</strong> <span id="colegios-count">0</span> instituciones en este municipio.
+                            </div>
                         </div>
                     </div>
+
+                    <!-- GUARDAMOS TODOS LOS COLEGIOS EN UN SCRIPT HIDDEN PARA USO DEL JAVASCRIPT -->
+                    <script type="application/json" id="colegios-data">
+                        @json($colegios)
+                    </script>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -215,15 +268,15 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Días</label>
-                            <input type="number" class="form-control" name="tiempo_dias" value="{{ old('tiempo_dias', 0) }}" min="0">
+                            <input type="number" class="form-control" name="tiempo_dias" id="tiempo_dias" value="{{ old('tiempo_dias', 0) }}" min="0">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Meses</label>
-                            <input type="number" class="form-control" name="tiempo_meses" value="{{ old('tiempo_meses', 0) }}" min="0">
+                            <input type="number" class="form-control" name="tiempo_meses" id="tiempo_meses" value="{{ old('tiempo_meses', 0) }}" min="0">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Años</label>
-                            <input type="number" class="form-control" name="tiempo_anios" value="{{ old('tiempo_anios', 0) }}" min="0">
+                            <input type="number" class="form-control" name="tiempo_anios" id="tiempo_anios" value="{{ old('tiempo_anios', 0) }}" min="0">
                         </div>
                     </div>
 
@@ -274,7 +327,7 @@
                     </div>
 
                     <div class="text-center mt-4">
-                        <button type="submit" class="btn btn-submit btn-lg">
+                        <button type="submit" class="btn btn-submit btn-lg" id="submit-btn">
                             📤 Enviar Denuncia
                         </button>
                     </div>
@@ -285,7 +338,31 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Función para calcular la edad
+        // ============================================================================
+        // VARIABLES GLOBALES Y CONFIGURACIÓN
+        // ============================================================================
+        let formSubmitted = false;
+        let todosLosColegios = [];
+
+        // Cargar datos de colegios desde el JSON embebido
+        try {
+            const colegiosDataElement = document.getElementById('colegios-data');
+            if (colegiosDataElement) {
+                todosLosColegios = JSON.parse(colegiosDataElement.textContent);
+                console.log('Colegios cargados:', todosLosColegios.length);
+            }
+        } catch (error) {
+            console.error('Error al cargar datos de colegios:', error);
+            todosLosColegios = [];
+        }
+
+        // Obtener IDs de opciones especiales desde PHP
+        const otroSocialMediaId = {{ $socialMediaOptions->firstWhere('name', 'Otro')->id ?? 'null' }};
+        const otraCosaBullyingTypeId = {{ $bullyingTypeOptions->firstWhere('description', 'like', '%Otra cosa%')->id ?? 'null' }};
+
+        // ============================================================================
+        // FUNCIÓN PARA CALCULAR EDAD
+        // ============================================================================
         function calcularEdad(fechaNacimiento) {
             const hoy = new Date();
             const nacimiento = new Date(fechaNacimiento);
@@ -299,7 +376,180 @@
             return edad;
         }
 
-        // Evento para calcular edad automáticamente y mostrar mensaje de menor de edad
+        // ============================================================================
+        // FUNCIÓN PRINCIPAL: FILTRAR COLEGIOS POR MUNICIPIO
+        // ============================================================================
+        function filtrarColegiosPorMunicipio(municipioId) {
+            const colegioSelect = document.getElementById('denunciante_colegio_id');
+            const loadingDiv = document.getElementById('loading-colegios');
+            const municipioInfo = document.getElementById('municipio-info');
+            const colegiosCount = document.getElementById('colegios-count');
+            const municipioValidationMessage = document.getElementById('municipio-validation-message');
+            const colegioValidationMessage = document.getElementById('colegio-validation-message');
+
+            console.log('Filtrando colegios para municipio ID:', municipioId);
+            console.log('Total de colegios disponibles:', todosLosColegios.length);
+
+            // Limpiar validaciones previas
+            colegioSelect.classList.remove('is-valid', 'is-invalid');
+            colegioValidationMessage.textContent = '';
+
+            // Si no hay municipio seleccionado
+            if (!municipioId || municipioId === '') {
+                console.log('No hay municipio seleccionado');
+                colegioSelect.disabled = true;
+                colegioSelect.innerHTML = '<option value="">Primero selecciona un municipio</option>';
+                municipioInfo.style.display = 'none';
+                loadingDiv.style.display = 'none';
+                
+                // Validación de municipio
+                const municipioSelect = document.getElementById('denunciante_municipio_id');
+                municipioSelect.classList.add('is-invalid');
+                municipioValidationMessage.textContent = 'Debes seleccionar un municipio primero.';
+                municipioValidationMessage.className = 'validation-message invalid';
+                return;
+            }
+
+            // Validación exitosa de municipio
+            const municipioSelect = document.getElementById('denunciante_municipio_id');
+            municipioSelect.classList.remove('is-invalid');
+            municipioSelect.classList.add('is-valid');
+            municipioValidationMessage.textContent = '✓ Municipio seleccionado correctamente.';
+            municipioValidationMessage.className = 'validation-message valid';
+
+            // Mostrar loading
+            loadingDiv.style.display = 'block';
+            colegioSelect.disabled = true;
+            colegioSelect.innerHTML = '<option value="">Cargando colegios...</option>';
+
+            // Simular pequeño delay para UX (opcional)
+            setTimeout(() => {
+                try {
+                    // Filtrar colegios del municipio seleccionado
+                    const colegiosFiltrados = todosLosColegios.filter(colegio => {
+                        const perteneceAlMunicipio = String(colegio.municipio_id) === String(municipioId);
+                        console.log(`Colegio ${colegio.nombre}: municipio_id=${colegio.municipio_id}, coincide=${perteneceAlMunicipio}`);
+                        return perteneceAlMunicipio;
+                    });
+
+                    console.log('Colegios filtrados:', colegiosFiltrados.length);
+
+                    // Limpiar el select
+                    colegioSelect.innerHTML = '';
+                    
+                    // Agregar opción por defecto
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = colegiosFiltrados.length > 0 ? 'Selecciona un colegio' : 'No hay colegios disponibles';
+                    colegioSelect.appendChild(defaultOption);
+
+                    // Agregar colegios filtrados
+                    if (colegiosFiltrados.length > 0) {
+                        colegiosFiltrados.forEach(colegio => {
+                            const option = document.createElement('option');
+                            option.value = colegio.id;
+                            option.textContent = colegio.nombre;
+                            
+                            // Restaurar selección previa si existe
+                            const valorAnterior = "{{ old('denunciante_colegio_id') }}";
+                            if (valorAnterior && String(colegio.id) === String(valorAnterior)) {
+                                option.selected = true;
+                                console.log('Restaurando selección previa:', colegio.nombre);
+                            }
+                            
+                            colegioSelect.appendChild(option);
+                        });
+
+                        // Habilitar el select
+                        colegioSelect.disabled = false;
+
+                        // Mostrar información del municipio
+                        colegiosCount.textContent = colegiosFiltrados.length;
+                        municipioInfo.style.display = 'block';
+
+                        // Validar selección de colegio si hay uno seleccionado
+                        if (colegioSelect.value !== '') {
+                            colegioSelect.classList.add('is-valid');
+                            colegioValidationMessage.textContent = '✓ Colegio seleccionado correctamente.';
+                            colegioValidationMessage.className = 'validation-message valid';
+                        }
+
+                    } else {
+                        // No hay colegios para este municipio
+                        colegioSelect.disabled = true;
+                        municipioInfo.style.display = 'none';
+                        
+                        // Mostrar mensaje de error
+                        colegioSelect.classList.add('is-invalid');
+                        colegioValidationMessage.textContent = 'No hay colegios registrados para este municipio.';
+                        colegioValidationMessage.className = 'validation-message invalid';
+                    }
+
+                } catch (error) {
+                    console.error('Error al filtrar colegios:', error);
+                    colegioSelect.innerHTML = '<option value="">Error al cargar colegios</option>';
+                    colegioSelect.disabled = true;
+                    
+                    // Mostrar mensaje de error
+                    colegioValidationMessage.textContent = 'Error al cargar colegios. Recarga la página.';
+                    colegioValidationMessage.className = 'validation-message invalid';
+                }
+
+                // Ocultar loading
+                loadingDiv.style.display = 'none';
+            }, 300); // 300ms de delay para suavizar la experiencia
+        }
+
+        // ============================================================================
+        // EVENT LISTENERS PRINCIPALES
+        // ============================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM cargado, inicializando formulario...');
+
+            // Event listener para cambio de municipio
+            const municipioSelect = document.getElementById('denunciante_municipio_id');
+            if (municipioSelect) {
+                municipioSelect.addEventListener('change', function() {
+                    const municipioId = this.value;
+                    console.log('Municipio cambiado a:', municipioId);
+                    filtrarColegiosPorMunicipio(municipioId);
+                });
+            }
+
+            // Event listener para validación de colegio
+            const colegioSelect = document.getElementById('denunciante_colegio_id');
+            if (colegioSelect) {
+                colegioSelect.addEventListener('change', function() {
+                    const colegioValidationMessage = document.getElementById('colegio-validation-message');
+                    
+                    if (this.disabled) {
+                        this.classList.remove('is-valid', 'is-invalid');
+                        colegioValidationMessage.textContent = '';
+                    } else if (this.value === '') {
+                        this.classList.remove('is-valid');
+                        this.classList.add('is-invalid');
+                        colegioValidationMessage.textContent = 'Debes seleccionar un colegio.';
+                        colegioValidationMessage.className = 'validation-message invalid';
+                    } else {
+                        this.classList.remove('is-invalid');
+                        this.classList.add('is-valid');
+                        colegioValidationMessage.textContent = '✓ Colegio seleccionado correctamente.';
+                        colegioValidationMessage.className = 'validation-message valid';
+                    }
+                });
+            }
+
+            // Inicializar filtrado si hay municipio seleccionado previamente
+            const municipioSeleccionado = municipioSelect.value;
+            if (municipioSeleccionado) {
+                console.log('Inicializando con municipio preseleccionado:', municipioSeleccionado);
+                filtrarColegiosPorMunicipio(municipioSeleccionado);
+            }
+        });
+
+        // ============================================================================
+        // CÁLCULO AUTOMÁTICO DE EDAD
+        // ============================================================================
         document.getElementById('fecha_nacimiento').addEventListener('change', function() {
             const fechaNacimiento = this.value;
             const edadInput = document.getElementById('edad');
@@ -310,240 +560,333 @@
                 edadInput.value = edad;
                 
                 if (edad < 18) {
-                    mensajeEdadDiv.innerHTML = '<div class="alert alert-info mt-2"><small><i class="fas fa-info-circle"></i> <strong>Menor de edad detectado:</strong> Tu denuncia recibirá atención prioritaria y se contactará con un adulto responsable si es necesario.</small></div>';
+                    mensajeEdadDiv.innerHTML = `
+                        <div class="alert alert-info mt-2">
+                            <small>
+                                <i class="fas fa-info-circle"></i> 
+                                <strong>Menor de edad detectado:</strong> 
+                                Tu denuncia recibirá atención prioritaria y se contactará con un adulto responsable si es necesario.
+                            </small>
+                        </div>`;
                 } else {
-                    mensajeEdadDiv.innerHTML = ''; // Limpiar mensaje si no es menor
+                    mensajeEdadDiv.innerHTML = '';
                 }
             } else {
                 edadInput.value = '';
-                mensajeEdadDiv.innerHTML = ''; // Limpiar mensaje si no hay fecha
+                mensajeEdadDiv.innerHTML = '';
             }
         });
 
-        // Calcular edad al cargar la página si ya hay una fecha (para casos de validación fallida)
+        // Calcular edad al cargar la página si ya hay una fecha
         window.addEventListener('load', function() {
             const fechaNacimiento = document.getElementById('fecha_nacimiento').value;
-            const edadInput = document.getElementById('edad');
-            const mensajeEdadDiv = document.getElementById('mensaje-menor-edad');
-
             if (fechaNacimiento) {
-                const edad = calcularEdad(fechaNacimiento);
-                edadInput.value = edad;
-                if (edad < 18) {
-                    mensajeEdadDiv.innerHTML = '<div class="alert alert-info mt-2"><small><i class="fas fa-info-circle"></i> <strong>Menor de edad detectado:</strong> Tu denuncia recibirá atención prioritaria y se contactará con un adulto responsable si es necesario.</small></div>';
-                }
+                document.getElementById('fecha_nacimiento').dispatchEvent(new Event('change'));
             }
         });
 
-        // Script para filtrar colegios por municipio
-        document.addEventListener('DOMContentLoaded', function() {
-            const municipioSelect = document.getElementById('denunciante_municipio_id');
-            const colegioSelect = document.getElementById('denunciante_colegio_id');
-            const allColegiosOptions = Array.from(colegioSelect.options); // Todas las opciones originales, incluyendo la de "Selecciona"
-
-            function filterColegios() {
-                const selectedMunicipioId = municipioSelect.value;
-                let originalSelectedColegioId = colegioSelect.value; // Guardar el valor seleccionado actual
-
-                // Limpiar el select de colegios, manteniendo la opción por defecto si no es un recarga de old()
-                colegioSelect.innerHTML = '<option value="">Selecciona un colegio</option>';
-
-                allColegiosOptions.forEach(option => {
-                    // Ignorar la primera opción "Selecciona un colegio" del listado original si la hubiera
-                    if (option.value === "") return; 
-
-                    // Si no hay municipio seleccionado O si la opción de colegio pertenece al municipio seleccionado
-                    if (selectedMunicipioId === "" || option.dataset.municipioId === selectedMunicipioId) {
-                        colegioSelect.appendChild(option.cloneNode(true)); // Añadir una copia para no mover el original
-                    }
-                });
-
-                // Intentar re-seleccionar el colegio que estaba antes, si es válido para el municipio actual
-                if (selectedMunicipioId) { // Solo intentar si hay un municipio seleccionado
-                    let foundOldColegio = false;
-                    colegioSelect.querySelectorAll('option').forEach(option => {
-                        if (option.value === originalSelectedColegioId) {
-                            option.selected = true;
-                            foundOldColegio = true;
-                        }
-                    });
-                    // Si el colegio previamente seleccionado no está en la lista filtrada, resetear a la opción por defecto
-                    if (!foundOldColegio && originalSelectedColegioId !== "") {
-                         colegioSelect.value = "";
-                    }
-                } else {
-                    colegioSelect.value = ""; // Si no hay municipio seleccionado, el colegio también debe resetearse
-                }
-            }
-
-            // Ejecutar al cargar la página para aplicar el filtro inicial si old() tiene valores
-            filterColegios();
-
-            // Ejecutar cada vez que cambia el municipio seleccionado
-            municipioSelect.addEventListener('change', filterColegios);
-        });
-
-
-        // Mostrar/ocultar campo "Otro" para redes sociales
+        // ============================================================================
+        // CAMPOS CONDICIONALES - REDES SOCIALES
+        // ============================================================================
         const socialMediaCheckboxes = document.querySelectorAll('input[name="red_social[]"]');
         const otroRedSocialDiv = document.getElementById('otro_red_social_div');
-        const otroRedSocialInput = otroRedSocialDiv.querySelector('input[name="otro_red_social"]');
-        const otroSocialMediaId = {{ $socialMediaOptions->firstWhere('name', 'Otro')->id ?? 'null' }};
+        const otroRedSocialInput = otroRedSocialDiv?.querySelector('input[name="otro_red_social"]');
 
         socialMediaCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 if (otroSocialMediaId && this.value == otroSocialMediaId) {
                     if (this.checked) {
                         otroRedSocialDiv.style.display = 'block';
+                        otroRedSocialInput.focus();
                     } else {
                         otroRedSocialDiv.style.display = 'none';
-                        otroRedSocialInput.value = ''; // Limpiar el input si se desmarca
+                        otroRedSocialInput.value = '';
                     }
                 }
             });
         });
 
+        // Inicializar estado de "Otro" para redes sociales
         window.addEventListener('load', function() {
             const oldRedSocials = @json(old('red_social', []));
-            if (otroSocialMediaId && oldRedSocials.includes(otroSocialMediaId.toString())) {
-                otroRedSocialDiv.style.display = 'block';
-            } else {
-                otroRedSocialDiv.style.display = 'none';
+            if (otroSocialMediaId && oldRedSocials.includes(String(otroSocialMediaId))) {
+                if (otroRedSocialDiv) otroRedSocialDiv.style.display = 'block';
             }
         });
 
-
-        // Mostrar/ocultar campo "Otra cosa" para tipos de acoso
+        // ============================================================================
+        // CAMPOS CONDICIONALES - TIPOS DE ACOSO
+        // ============================================================================
         const bullyingTypeCheckboxes = document.querySelectorAll('input[name="que_esta_pasando[]"]');
         const otroQueEstaPasandoDiv = document.getElementById('otro_que_esta_pasando_div');
-        const otroQueEstaPasandoTextarea = otroQueEstaPasandoDiv.querySelector('textarea[name="otro_que_esta_pasando"]');
-        const otraCosaBullyingTypeId = {{ $bullyingTypeOptions->firstWhere('description', 'Otra cosa (escríbela)')->id ?? 'null' }};
+        const otroQueEstaPasandoTextarea = otroQueEstaPasandoDiv?.querySelector('textarea[name="otro_que_esta_pasando"]');
 
         bullyingTypeCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 if (otraCosaBullyingTypeId && this.value == otraCosaBullyingTypeId) {
                     if (this.checked) {
                         otroQueEstaPasandoDiv.style.display = 'block';
+                        otroQueEstaPasandoTextarea.focus();
                     } else {
                         otroQueEstaPasandoDiv.style.display = 'none';
-                        otroQueEstaPasandoTextarea.value = ''; // Limpiar el campo si se desmarca
+                        otroQueEstaPasandoTextarea.value = '';
                     }
                 }
             });
         });
 
+        // Inicializar estado de "Otra cosa" para tipos de acoso
         window.addEventListener('load', function() {
             const oldQueEstaPasando = @json(old('que_esta_pasando', []));
-            if (otraCosaBullyingTypeId && oldQueEstaPasando.includes(otraCosaBullyingTypeId.toString())) {
-                otroQueEstaPasandoDiv.style.display = 'block';
-            } else {
-                otroQueEstaPasandoDiv.style.display = 'none';
+            if (otraCosaBullyingTypeId && oldQueEstaPasando.includes(String(otraCosaBullyingTypeId))) {
+                if (otroQueEstaPasandoDiv) otroQueEstaPasandoDiv.style.display = 'block';
             }
         });
 
-
-        // Mostrar/ocultar campo de nombre del agresor
+        // ============================================================================
+        // CAMPOS CONDICIONALES - NOMBRE DEL AGRESOR
+        // ============================================================================
         document.querySelectorAll('input[name="agresor_conocido"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 const nombreAgresorDiv = document.getElementById('agresor_nombre_div');
-                const nombreAgresorInput = nombreAgresorDiv.querySelector('input[name="agresor_nombre"]');
+                const nombreAgresorInput = nombreAgresorDiv?.querySelector('input[name="agresor_nombre"]');
+                
                 if (this.value === 'si' || this.value === 'sospecho quien es') {
                     nombreAgresorDiv.style.display = 'block';
+                    setTimeout(() => nombreAgresorInput?.focus(), 100);
                 } else {
                     nombreAgresorDiv.style.display = 'none';
-                    nombreAgresorInput.value = '';
+                    if (nombreAgresorInput) nombreAgresorInput.value = '';
                 }
             });
         });
 
+        // Inicializar estado del nombre del agresor
         window.addEventListener('load', function() {
             const selectedAgresorConocido = document.querySelector('input[name="agresor_conocido"]:checked');
+            const nombreAgresorDiv = document.getElementById('agresor_nombre_div');
+            
             if (selectedAgresorConocido && (selectedAgresorConocido.value === 'si' || selectedAgresorConocido.value === 'sospecho quien es')) {
-                document.getElementById('agresor_nombre_div').style.display = 'block';
+                nombreAgresorDiv.style.display = 'block';
             } else {
-                document.getElementById('agresor_nombre_div').style.display = 'none';
+                nombreAgresorDiv.style.display = 'none';
             }
         });
 
-
-        // Mostrar/ocultar campo de línea telefónica
+        // ============================================================================
+        // CAMPOS CONDICIONALES - LÍNEA TELEFÓNICA
+        // ============================================================================
         document.querySelectorAll('input[name="reportado_otro_medio"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 const cualLineaDiv = document.getElementById('reportado_cual_linea_div');
-                const cualLineaInput = cualLineaDiv.querySelector('input[name="reportado_cual_linea"]');
+                const cualLineaInput = cualLineaDiv?.querySelector('input[name="reportado_cual_linea"]');
+                
                 if (this.value === 'Sí, llamé a la línea telefónica') {
                     cualLineaDiv.style.display = 'block';
+                    setTimeout(() => cualLineaInput?.focus(), 100);
                 } else {
                     cualLineaDiv.style.display = 'none';
-                    cualLineaInput.value = '';
+                    if (cualLineaInput) cualLineaInput.value = '';
                 }
             });
         });
 
+        // Inicializar estado de línea telefónica
         window.addEventListener('load', function() {
             const selectedReportadoOtroMedio = document.querySelector('input[name="reportado_otro_medio"]:checked');
+            const cualLineaDiv = document.getElementById('reportado_cual_linea_div');
+            
             if (selectedReportadoOtroMedio && selectedReportadoOtroMedio.value === 'Sí, llamé a la línea telefónica') {
-                document.getElementById('reportado_cual_linea_div').style.display = 'block';
+                cualLineaDiv.style.display = 'block';
             } else {
-                document.getElementById('reportado_cual_linea_div').style.display = 'none';
+                cualLineaDiv.style.display = 'none';
             }
         });
 
+        // ============================================================================
+        // VALIDACIÓN COMPLETA DEL FORMULARIO
+        // ============================================================================
+        function validarFormularioCompleto() {
+            let errores = [];
+            let primerCampoConError = null;
 
-        // Validación adicional del lado del cliente (mejorada)
-        document.querySelector('form').addEventListener('submit', function(e) {
-            let isValid = true;
-            let errorMessage = [];
+            // 1. Validar municipio
+            const municipioSelect = document.getElementById('denunciante_municipio_id');
+            if (!municipioSelect.value) {
+                errores.push('• Debes seleccionar un municipio.');
+                municipioSelect.classList.add('is-invalid');
+                if (!primerCampoConError) primerCampoConError = municipioSelect;
+            }
 
-            // Validar que al menos una red social esté seleccionada
+            // 2. Validar colegio
+            const colegioSelect = document.getElementById('denunciante_colegio_id');
+            if (colegioSelect.disabled || !colegioSelect.value) {
+                errores.push('• Debes seleccionar un colegio válido para el municipio elegido.');
+                if (!colegioSelect.disabled) {
+                    colegioSelect.classList.add('is-invalid');
+                    if (!primerCampoConError) primerCampoConError = colegioSelect;
+                }
+            }
+
+            // 3. Validar redes sociales
             const redesSociales = document.querySelectorAll('input[name="red_social[]"]:checked');
             if (redesSociales.length === 0) {
-                isValid = false;
-                errorMessage.push('• Por favor selecciona al menos una red social donde ocurrieron los hechos.');
+                errores.push('• Por favor selecciona al menos una red social donde ocurrieron los hechos.');
+                const primerCheckboxRedSocial = document.querySelector('input[name="red_social[]"]');
+                if (!primerCampoConError && primerCheckboxRedSocial) primerCampoConError = primerCheckboxRedSocial;
             }
 
-            // Validar que al menos una opción de "qué está pasando" esté seleccionada
+            // 4. Validar qué está pasando
             const queEstaPasando = document.querySelectorAll('input[name="que_esta_pasando[]"]:checked');
             if (queEstaPasando.length === 0) {
-                isValid = false;
-                errorMessage.push('• Por favor selecciona al menos una opción de lo que está pasando.');
+                errores.push('• Por favor selecciona al menos una opción de lo que está pasando.');
+                const primerCheckboxBullying = document.querySelector('input[name="que_esta_pasando[]"]');
+                if (!primerCampoConError && primerCheckboxBullying) primerCampoConError = primerCheckboxBullying;
             }
 
-            // Validar que al menos una opción de "cómo se siente" esté seleccionada
+            // 5. Validar sentimientos
             const comoSeSiente = document.querySelectorAll('input[name="como_te_sientes[]"]:checked');
             if (comoSeSiente.length === 0) {
-                isValid = false;
-                errorMessage.push('• Por favor selecciona al menos una opción de cómo te sientes.');
+                errores.push('• Por favor selecciona al menos una opción de cómo te sientes.');
+                const primerCheckboxSentimiento = document.querySelector('input[name="como_te_sientes[]"]');
+                if (!primerCampoConError && primerCheckboxSentimiento) primerCampoConError = primerCheckboxSentimiento;
             }
 
-            // Validar edad (calculada)
+            // 6. Validar edad
             const edad = parseInt(document.getElementById('edad').value);
             if (isNaN(edad) || edad < 0 || edad > 120) {
-                isValid = false;
-                errorMessage.push('• Por favor verifica que la fecha de nacimiento sea correcta.');
+                errores.push('• Por favor verifica que la fecha de nacimiento sea correcta.');
+                const fechaNacimiento = document.getElementById('fecha_nacimiento');
+                if (!primerCampoConError && fechaNacimiento) primerCampoConError = fechaNacimiento;
             }
 
-            // Validar campos de tiempo (al menos uno > 0)
+            // 7. Validar campos de tiempo (al menos uno > 0)
             const tiempoDias = parseInt(document.getElementById('tiempo_dias').value) || 0;
             const tiempoMeses = parseInt(document.getElementById('tiempo_meses').value) || 0;
             const tiempoAnios = parseInt(document.getElementById('tiempo_anios').value) || 0;
 
             if (tiempoDias === 0 && tiempoMeses === 0 && tiempoAnios === 0) {
-                isValid = false;
-                errorMessage.push('• Debes especificar un tiempo transcurrido (días, meses o años) que sea mayor a cero.');
+                errores.push('• Debes especificar un tiempo transcurrido (días, meses o años) que sea mayor a cero.');
+                const tiempoDiasInput = document.getElementById('tiempo_dias');
+                if (!primerCampoConError && tiempoDiasInput) primerCampoConError = tiempoDiasInput;
             }
 
+            // 8. Validar campos requeridos básicos
+            const camposRequeridos = [
+                { elemento: document.querySelector('input[name="denunciante_nombre_completo"]'), mensaje: '• El nombre completo es requerido.' },
+                { elemento: document.querySelector('input[name="denunciante_fecha_nacimiento"]'), mensaje: '• La fecha de nacimiento es requerida.' },
+                { elemento: document.querySelector('input[name="denunciante_curso_grado"]'), mensaje: '• El curso/grado es requerido.' },
+                { elemento: document.querySelector('input[name="denunciante_identificacion"]'), mensaje: '• El número de identificación es requerido.' },
+                { elemento: document.querySelector('textarea[name="resumen_hechos"]'), mensaje: '• El resumen de los hechos es requerido.' }
+            ];
 
-            // Si hay errores, prevenir el envío y mostrar un resumen
-            if (!isValid) {
-                e.preventDefault();
-                alert('¡Ups! Parece que faltan algunos datos o hay errores:\n' + errorMessage.join('\n'));
-            } else {
-                // Confirmar envío si todas las validaciones pasan
-                if (!confirm('¿Estás seguro de que quieres enviar esta denuncia? Una vez enviada, será procesada de manera confidencial.')) {
-                    e.preventDefault();
+            camposRequeridos.forEach(campo => {
+                if (campo.elemento && !campo.elemento.value.trim()) {
+                    errores.push(campo.mensaje);
+                    campo.elemento.classList.add('is-invalid');
+                    if (!primerCampoConError) primerCampoConError = campo.elemento;
                 }
+            });
+
+            // 9. Validar campos de radio requeridos
+            const camposRadioRequeridos = [
+                { name: 'afectado_quien', mensaje: '• Debes especificar quién es la persona afectada.' },
+                { name: 'agresor_conocido', mensaje: '• Debes especificar si conoces al agresor.' },
+                { name: 'reportado_otro_medio', mensaje: '• Debes especificar si ya reportaste por otro medio.' },
+                { name: 'contacto_deseado', mensaje: '• Debes especificar si deseas que te contacten.' }
+            ];
+
+            camposRadioRequeridos.forEach(campo => {
+                const seleccionado = document.querySelector(`input[name="${campo.name}"]:checked`);
+                if (!seleccionado) {
+                    errores.push(campo.mensaje);
+                    const primerRadio = document.querySelector(`input[name="${campo.name}"]`);
+                    if (!primerCampoConError && primerRadio) primerCampoConError = primerRadio;
+                }
+            });
+
+            return { errores, primerCampoConError };
+        }
+
+        // ============================================================================
+        // MANEJO DEL ENVÍO DEL FORMULARIO
+        // ============================================================================
+        document.querySelector('form').addEventListener('submit', function(e) {
+            // Prevenir envío múltiple
+            if (formSubmitted) {
+                e.preventDefault();
+                console.log('Formulario ya enviado, previniendo envío múltiple');
+                return false;
             }
+
+            console.log('Validando formulario antes del envío...');
+            const validacion = validarFormularioCompleto();
+
+            // Si hay errores, prevenir el envío
+            if (validacion.errores.length > 0) {
+                e.preventDefault();
+                console.log('Errores encontrados:', validacion.errores);
+                
+                // Mostrar errores al usuario
+                const mensajeError = '¡Ups! Parece que faltan algunos datos o hay errores:\n\n' + 
+                                   validacion.errores.join('\n') + 
+                                   '\n\nPor favor revisa y completa la información requerida.';
+                alert(mensajeError);
+                
+                // Hacer scroll al primer campo con error
+                if (validacion.primerCampoConError) {
+                    validacion.primerCampoConError.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                    setTimeout(() => validacion.primerCampoConError.focus(), 500);
+                }
+                
+                return false;
+            }
+
+            // Validación final: Confirmar envío
+            const municipioSelect = document.getElementById('denunciante_municipio_id');
+            const colegioSelect = document.getElementById('denunciante_colegio_id');
+            const edad = document.getElementById('edad').value;
+
+            const confirmMessage = `¿Estás seguro de que quieres enviar esta denuncia?
+
+INFORMACIÓN A ENVIAR:
+• Municipio: ${municipioSelect.options[municipioSelect.selectedIndex].text}
+• Colegio: ${colegioSelect.options[colegioSelect.selectedIndex].text}
+• Edad: ${edad} años
+
+Una vez enviada, será procesada de manera confidencial y segura.
+
+¿Continuar con el envío?`;
+
+            if (!confirm(confirmMessage)) {
+                e.preventDefault();
+                console.log('Usuario canceló el envío');
+                return false;
+            }
+
+            // Deshabilitar botón de envío y marcar como enviado
+            console.log('Enviando formulario...');
+            const submitBtn = document.getElementById('submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            }
+            
+            formSubmitted = true;
+            return true;
+        });
+
+        // ============================================================================
+        // DEBUGGING Y LOGGING
+        // ============================================================================
+        console.log('Script inicializado correctamente');
+        console.log('Configuración:', {
+            otroSocialMediaId,
+            otraCosaBullyingTypeId,
+            totalColegios: todosLosColegios.length
         });
     </script>
 </body>
