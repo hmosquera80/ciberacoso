@@ -71,11 +71,11 @@
     <div class="container">
         <div class="form-container">
             <div class="form-header">
-                <h1>🧑‍💻 Formulario de Denuncia</h1> <h3>"Cuéntanos lo que te pasa"</h3>
+                <h1>🧑‍💻 Formulario de Denuncia</h1>
+                <h3>"Cuéntanos lo que te pasa"</h3>
             </div>
             
             <div class="form-body">
-                {{-- Mostrar errores de validación de Laravel --}}
                 @if ($errors->any())
                     <div class="alert alert-danger">
                         <ul class="mb-0">
@@ -85,7 +85,6 @@
                         </ul>
                     </div>
                 @endif
-                {{-- Mostrar mensaje de éxito si viene de una redirección --}}
                 @if (session('success'))
                     <div class="alert alert-success">
                         {{ session('success') }}
@@ -132,7 +131,6 @@
                             <label class="form-label">Nombre del colegio <span class="required">*</span></label>
                             <select class="form-control" name="denunciante_colegio_id" id="denunciante_colegio_id" required>
                                 <option value="">Selecciona un colegio</option>
-                                {{-- Las opciones de colegios se cargarán dinámicamente con JavaScript --}}
                                 @foreach($colegios as $colegio)
                                     <option value="{{ $colegio->id }}" 
                                             data-municipio-id="{{ $colegio->municipio_id }}"
@@ -390,8 +388,6 @@
         const socialMediaCheckboxes = document.querySelectorAll('input[name="red_social[]"]');
         const otroRedSocialDiv = document.getElementById('otro_red_social_div');
         const otroRedSocialInput = otroRedSocialDiv.querySelector('input[name="otro_red_social"]');
-        // Asegúrate de que $socialMediaOptions->firstWhere('name', 'Otro')->id esté disponible.
-        // Si 'Otro' no está garantizado, añade un chequeo null para evitar errores.
         const otroSocialMediaId = {{ $socialMediaOptions->firstWhere('name', 'Otro')->id ?? 'null' }};
 
         socialMediaCheckboxes.forEach(checkbox => {
@@ -421,7 +417,6 @@
         const bullyingTypeCheckboxes = document.querySelectorAll('input[name="que_esta_pasando[]"]');
         const otroQueEstaPasandoDiv = document.getElementById('otro_que_esta_pasando_div');
         const otroQueEstaPasandoTextarea = otroQueEstaPasandoDiv.querySelector('textarea[name="otro_que_esta_pasando"]');
-        // Asegúrate de que $bullyingTypeOptions->firstWhere('description', 'Otra cosa (escríbela)')->id esté disponible.
         const otraCosaBullyingTypeId = {{ $bullyingTypeOptions->firstWhere('description', 'Otra cosa (escríbela)')->id ?? 'null' }};
 
         bullyingTypeCheckboxes.forEach(checkbox => {

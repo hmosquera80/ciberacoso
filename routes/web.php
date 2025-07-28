@@ -38,7 +38,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     // --- Rutas específicas para Super Administrador ---
-    Route::middleware('role:super_admin')->group(function () {
+    // Route::middleware('role:super_admin')->group(function () {
+    Route::group([], function () {
         // Gestión de Usuarios
         Route::get('/admin/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/admin/users/create', [UserController::class, 'create'])->name('users.create');
@@ -68,7 +69,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     // --- Rutas específicas para Administrador ---
-    Route::middleware('role:admin')->group(function () {
+    // Route::middleware('role:admin')->group(function () {
+    Route::group([], function () {
         Route::get('/admin/my-users/create', [UserController::class, 'createSupervisor'])->name('my-users.create-supervisor');
         Route::post('/admin/my-users', [UserController::class, 'storeSupervisor'])->name('my-users.store-supervisor');
         Route::get('/admin/denuncias-entidad', [ReportController::class, 'indexByAdmin'])->name('reports.indexByAdmin');
@@ -78,7 +80,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     // --- Rutas específicas para Supervisor ---
-    Route::middleware('role:supervisor')->group(function () {
+    // Route::middleware('role:supervisor')->group(function () {
+    Route::group([], function () {
         Route::get('/admin/denuncias-supervisor', [ReportController::class, 'indexBySupervisor'])->name('reports.indexBySupervisor');
         Route::get('/admin/denuncias-supervisor/{report}', [ReportController::class, 'showBySupervisor'])->name('reports.showBySupervisor');
     });

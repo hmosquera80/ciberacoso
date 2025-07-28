@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Colegio;
-use App\Models\Municipio; // Necesario para el formulario
+use App\Models\Municipio;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -16,6 +16,7 @@ class ColegioController extends Controller
     public function index()
     {
         $colegios = Colegio::with('municipio')->latest()->paginate(10);
+        
         return view('admin.colegios.index', compact('colegios'));
     }
 
@@ -25,7 +26,8 @@ class ColegioController extends Controller
      */
     public function create()
     {
-        $municipios = Municipio::where('activo', true)->get(); // Solo se pueden asignar a municipios activos
+        $municipios = Municipio::where('activo', true)->orderBy('nombre')->get();
+        
         return view('admin.colegios.create', compact('municipios'));
     }
 
@@ -38,10 +40,20 @@ class ColegioController extends Controller
         $request->validate([
             'nombre' => 'required|string|max:255|unique:colegios,nombre',
             'municipio_id' => 'required|exists:municipios,id',
-            'activo' => 'boolean', // Campo activo es un checkbox
+            'activo' => 'boolean',
+        ], [
+            'nombre.required' => 'El nombre del colegio es obligatorio.',
+            'nombre.unique' => 'Ya existe un colegio con este nombre.',
+            'municipio_id.required' => 'Debes seleccionar un municipio.',
+            'municipio_id.exists' => 'El municipio seleccionado no es válido.',
         ]);
 
-        Colegio::create($request->all());
+        Colegio::create([
+            'nombre' => $request->nombre,
+            'municipio_id' => $request->municipio_id,
+            'activo' => $request->has('activo') ? true : false,
+        ]);
+
         return redirect()->route('colegios.index')->with('success', 'Colegio creado exitosamente.');
     }
 
@@ -51,7 +63,8 @@ class ColegioController extends Controller
      */
     public function edit(Colegio $colegio)
     {
-        $municipios = Municipio::where('activo', true)->get(); // Solo se pueden asignar a municipios activos
+        $municipios = Municipio::where('activo', true)->orderBy('nombre')->get();
+        
         return view('admin.colegios.edit', compact('colegio', 'municipios'));
     }
 
@@ -64,17 +77,20 @@ class ColegioController extends Controller
         $request->validate([
             'nombre' => ['required', 'string', 'max:255', Rule::unique('colegios')->ignore($colegio->id)],
             'municipio_id' => 'required|exists:municipios,id',
-            // La casilla de verificación 'activo' puede no estar presente en el request si no está marcada,
-            // por lo que se ajusta a 0 si no se envía.
-            'activo' => 'boolean', 
+            'activo' => 'boolean',
+        ], [
+            'nombre.required' => 'El nombre del colegio es obligatorio.',
+            'nombre.unique' => 'Ya existe un colegio con este nombre.',
+            'municipio_id.required' => 'Debes seleccionar un municipio.',
+            'municipio_id.exists' => 'El municipio seleccionado no es válido.',
         ]);
 
-        // Si el checkbox 'activo' no está marcado en el formulario, Request no lo incluye.
-        // Aseguramos que se guarde como false (0) en la base de datos.
-        $data = $request->all();
-        $data['activo'] = $request->has('activo'); // Establece a true si está presente, false si no.
+        $colegio->update([
+            'nombre' => $request->nombre,
+            'municipio_id' => $request->municipio_id,
+            'activo' => $request->has('activo') ? true : false,
+        ]);
 
-        $colegio->update($data);
         return redirect()->route('colegios.index')->with('success', 'Colegio actualizado exitosamente.');
     }
 
@@ -84,6 +100,11 @@ class ColegioController extends Controller
      */
     public function destroy(Colegio $colegio)
     {
+        // Verificar si hay usuarios asociados al colegio
+        if ($colegio->users()->count() > 0) {
+            return redirect()->route('colegios.index')->with('error', 'No se puede eliminar el colegio porque tiene usuarios asociados.');
+        }
+
         $colegio->delete();
         return redirect()->route('colegios.index')->with('success', 'Colegio eliminado exitosamente.');
     }

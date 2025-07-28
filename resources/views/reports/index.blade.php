@@ -317,8 +317,8 @@
                             <div class="col-md-4 mb-3">
                                 <a href="{{ route('report.create') }}" class="btn btn-outline-primary w-100 py-3">
                                     <i class="fas fa-file-alt fa-2x d-block mb-2"></i>
-                                    <strong>Crear Nueva Denuncia</strong>
-                                    <br><small>Acceso al formulario público de reporte</small>
+                                    <strong>Gestión de Denuncia</strong>
+                                    <br><small>Gestionar casos reportados</small>
                                 </a>
                             </div>
                         </div>

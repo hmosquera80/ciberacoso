@@ -9,13 +9,23 @@ class Colegio extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'municipio_id', 'activo'];
+    protected $fillable = [
+        'nombre',
+        'municipio_id',
+        'activo',
+    ];
 
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
+
+    // Relación: Un colegio pertenece a un municipio
     public function municipio()
     {
         return $this->belongsTo(Municipio::class);
     }
 
+    // Relación: Un colegio puede tener muchos usuarios
     public function users()
     {
         return $this->hasMany(User::class);

@@ -15,7 +15,7 @@ use App\Models\DenunciaSeguimiento;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth; // Necesario para Auth::user()
 
 class ReportController extends Controller
 {
@@ -78,7 +78,7 @@ class ReportController extends Controller
 
             'resumen_hechos' => 'required|string|min:10|max:1000',
             'contacto_deseado' => ['required', Rule::in(['Sí, quiero que me llamen o escriban', 'No por ahora, solo quería contar lo que me pasa', 'Me gustaría recibir ayuda después'])],
-
+            
             'evidencia_file' => 'nullable|file|mimes:jpeg,png,pdf,doc,docx,mp4,mov|max:20480',
         ];
 
@@ -149,7 +149,7 @@ class ReportController extends Controller
 
         $municipioNombre = Municipio::find($request->denunciante_municipio_id)->nombre;
         $colegioNombre = Colegio::find($request->denunciante_colegio_id)->nombre;
-
+        
         $estadoAbiertaId = DenunciaEstado::where('nombre', 'Abierta')->first()->id;
 
         $report = Report::create([
@@ -191,34 +191,37 @@ class ReportController extends Controller
         $user = Auth::user();
         $query = Report::with(['estado']);
 
-        if ($user->isAdmin()) {
+        // Lógica de filtrado basada en el rol del usuario
+        if ($user->role === 'admin') { // Uso directo de la propiedad 'role'
             if ($user->colegio) {
                 $colegioNombre = $user->colegio->nombre;
                 $query->where('denunciante_colegio', $colegioNombre);
             } else {
-                $query->whereRaw('1 = 0');
+                $query->whereRaw('1 = 0'); // No mostrar resultados si no tiene colegio asignado
             }
-        } elseif ($user->isSupervisor()) {
+        } elseif ($user->role === 'supervisor') { // Uso directo de la propiedad 'role'
             if ($user->colegio) {
                 $colegioNombre = $user->colegio->nombre;
                 $query->where('denunciante_colegio', $colegioNombre);
             } else {
-                $query->whereRaw('1 = 0');
+                $query->whereRaw('1 = 0'); // No mostrar resultados si no tiene colegio asignado
             }
         }
+        // Super Admin ve todas las denuncias (no necesita filtro adicional)
 
         $reports = $query->latest()->paginate(10);
 
+        // --- CÁLCULO DE ESTADÍSTICAS PARA EL DASHBOARD ---
         $stats = [];
         $baseStatsQuery = Report::query();
 
-        if ($user->isAdmin()) {
+        if ($user->role === 'admin') { // Uso directo de la propiedad 'role'
             if ($user->colegio) {
                 $baseStatsQuery->where('denunciante_colegio', $user->colegio->nombre);
             } else {
                 $baseStatsQuery->whereRaw('1 = 0');
             }
-        } elseif ($user->isSupervisor()) {
+        } elseif ($user->role === 'supervisor') { // Uso directo de la propiedad 'role'
             if ($user->colegio) {
                 $baseStatsQuery->where('denunciante_colegio', $user->colegio->nombre);
             } else {
@@ -252,6 +255,7 @@ class ReportController extends Controller
         return view('reports.index', compact('reports', 'stats'));
     }
 
+
     /**
      * Muestra los detalles de una denuncia específica.
      * La lógica de permisos para ver el detalle se implementa aquí.
@@ -260,11 +264,11 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isAdmin()) {
+        if ($user->role === 'admin') { // Uso directo de la propiedad 'role'
             if ($user->colegio && $report->denunciante_colegio !== $user->colegio->nombre) {
                 return redirect()->route('dashboard')->with('error', 'No tienes permiso para ver esta denuncia.');
             }
-        } elseif ($user->isSupervisor()) {
+        } elseif ($user->role === 'supervisor') { // Uso directo de la propiedad 'role'
             if ($user->colegio && $report->denunciante_colegio !== $user->colegio->nombre) {
                 return redirect()->route('dashboard')->with('error', 'No tienes permiso para ver esta denuncia.');
             }
@@ -299,14 +303,14 @@ class ReportController extends Controller
         $estadoPendienteCierre = DenunciaEstado::where('nombre', 'Pendiente de Cierre')->first();
         $estadoCerrada = DenunciaEstado::where('nombre', 'Cerrada')->first();
 
-        if ($currentUser->isAdmin() && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
+        if ($currentUser->role === 'admin' && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
             return back()->with('error', 'No tienes permiso para gestionar esta denuncia.');
         }
-        if ($currentUser->isSupervisor() && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
+        if ($currentUser->role === 'supervisor' && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
             return back()->with('error', 'No tienes permiso para gestionar esta denuncia.');
         }
 
-        if (!$currentUser->isSuperAdmin()) {
+        if ($currentUser->role !== 'super_admin') { // Solo Super Admin no tiene restricciones de transición
             if ($newStatus->id === $estadoEnTramite->id) {
                 if ($oldStatus->id !== $estadoAbierta->id || $report->denuncia_estado_id !== $estadoAbierta->id) {
                     return back()->with('error', 'Solo se puede pasar a "En Trámite" si la denuncia está "Abierta".');
@@ -323,7 +327,7 @@ class ReportController extends Controller
                 if ($report->seguimientos->count() < 1) {
                     return back()->with('error', 'Debe haber al menos una anotación de seguimiento antes de marcar como "Pendiente de Cierre".');
                 }
-                if (!$currentUser->isSupervisor()) {
+                if ($currentUser->role !== 'supervisor') {
                     return back()->with('error', 'Solo un Supervisor puede marcar una denuncia como "Pendiente de Cierre".');
                 }
             }
@@ -332,7 +336,7 @@ class ReportController extends Controller
                 if ($oldStatus->id !== $estadoPendienteCierre->id) {
                     return back()->with('error', 'Solo se puede cerrar una denuncia si está en estado "Pendiente de Cierre".');
                 }
-                if (!$currentUser->isSupervisor()) {
+                if ($currentUser->role !== 'supervisor') {
                     return back()->with('error', 'Solo un Supervisor puede cerrar definitivamente una denuncia.');
                 }
             }
@@ -375,10 +379,10 @@ class ReportController extends Controller
 
         $currentUser = Auth::user();
 
-        if ($currentUser->isAdmin() && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
+        if ($currentUser->role === 'admin' && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
             return back()->with('error', 'No tienes permiso para añadir seguimiento a esta denuncia.');
         }
-        if ($currentUser->isSupervisor() && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
+        if ($currentUser->role === 'supervisor' && ($currentUser->colegio && $report->denunciante_colegio !== $currentUser->colegio->nombre)) {
             return back()->with('error', 'No tienes permiso para añadir seguimiento a esta denuncia.');
         }
 
