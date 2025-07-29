@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\SocialMediaOption;
-use App\Models\BullyingTypeOption;
-use App\Models\FeelingOption;
-use App\Models\ReportChannelOption;
+use App\Models\SocialMedia;
+use App\Models\BullyingType;
+use App\Models\Feeling;
+use App\Models\ReportChannel;
 use App\Models\Report;
 use App\Models\Municipio;
 use App\Models\Colegio;
@@ -32,10 +32,10 @@ class ReportController extends Controller
             $colegios = Colegio::where('activo', true)->orderBy('nombre')->get();
             
             // Obtener opciones del formulario
-            $socialMediaOptions = SocialMediaOption::all();
-            $bullyingTypeOptions = BullyingTypeOption::all();
-            $feelingOptions = FeelingOption::all();
-            $reportChannelOptions = ReportChannelOption::all();
+            $socialMediaOptions = SocialMedia::all();
+            $bullyingTypeOptions = BullyingType::all();
+            $feelingOptions = Feeling::all();
+            $reportChannelOptions = ReportChannel::all();
 
             return view('reports.create', compact(
                 'municipios',
